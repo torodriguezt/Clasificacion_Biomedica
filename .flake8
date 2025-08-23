@@ -1,0 +1,22 @@
+[flake8]
+max-line-length = 88
+extend-ignore = E203, E501, W503
+exclude = 
+    __pycache__,
+    .git,
+    .conda,
+    .venv,
+    venv,
+    env,
+    build,
+    dist,
+    *.egg-info
+
+# Additional ignore rules for medical AI project
+per-file-ignores =
+    # Allow star imports in __init__.py files
+    __init__.py:F401,F403
+    # Allow longer lines in configuration files
+    config/*.py:E501
+    # Allow specific patterns in model files
+    */model_utils.py:E402

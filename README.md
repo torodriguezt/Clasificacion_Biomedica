@@ -4,6 +4,16 @@ Un sistema integral de clasificación de textos biomédicos que utiliza Improved
 
 [DEMO](http://159.65.106.247:3000/)
 
+## 📊 Resultados Globales
+
+| Métrica              | Valor   |
+|-----------------------|---------|
+| **F1 Score Weighted** | 0.939  |
+| **F1 Score Macro**    | 0.949  |
+| **F1 Score Micro**    | 0.943  |
+
+El modelo logra un **F1 Score Weighted de 0.9428**, mostrando un rendimiento muy alto y estable en un escenario de clasificación multi-etiqueta desbalanceado.
+
 ## 🏗️ Estructura del Proyecto
 
 ```

@@ -1,0 +1,42 @@
+{
+  "name": "biomedical-classifier",
+  "version": "1.0.0",
+  "description": "🧠 Clasificador de Artículos Biomédicos con IA - Sistema completo de clasificación automática de literatura médica",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && python main.py",
+    "frontend": "cd frontend && npm run dev",
+    "install:frontend": "cd frontend && npm install --legacy-peer-deps",
+    "install:backend": "cd backend && pip install -r requirements.txt",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "build:frontend": "cd frontend && npm run build",
+    "start:frontend": "cd frontend && npm start",
+    "lint:frontend": "cd frontend && npm run lint"
+  },
+  "keywords": [
+    "medical",
+    "biomedical",
+    "classification",
+    "ai",
+    "machine-learning",
+    "nlp",
+    "fastapi",
+    "nextjs",
+    "bert",
+    "pubmed"
+  ],
+  "author": "Tomas Rodriguez",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/torodriguezt/Clasificacion_Biomedica.git"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.11.0"
+  }
+}

@@ -58,7 +58,7 @@ class MedicalClassifier:
         self.model_dir = Path(model_dir)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_loaded = False
-        self.threshold = 0.7
+        self.threshold = 0.36  # THRESHOLD REAL DEL MODELO
         self.categories = [
             "cardiovascular",
             "hepatorenal",

@@ -56,9 +56,9 @@ export default function MedicalClassifier() {
         'oncological': 'Oncológico',
       }
 
-      // Filtrar categorías que superen 0.6 (60%) de probabilidad
+      // Filtrar categorías que superen 0.36 (36%) de probabilidad - THRESHOLD REAL DEL MODELO
       const qualifyingCategories: string[] = []
-      const threshold = 0.6
+      const threshold = 0.36
 
       Object.entries(data).forEach(([key, value]) => {
         if (key in categoryMapping && typeof value === 'number' && value > threshold) {

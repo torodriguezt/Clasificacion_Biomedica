@@ -2,6 +2,8 @@
 
 Un sistema integral de clasificación de textos biomédicos que utiliza ImprovedMedicalBERT para categorizar literatura médica en las categorías: cardiovascular, hepatorenal, neurológica y oncológica.
 
+[DEMO](http://159.65.106.247:3000/)
+
 ## 🏗️ Estructura del Proyecto
 
 ```

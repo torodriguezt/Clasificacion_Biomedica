@@ -12,12 +12,11 @@ Un sistema integral de clasificación de textos biomédicos que utiliza Improved
 
 El modelo logra un **F1 Score Weighted de 0.9428**, mostrando un rendimiento muy alto y estable en un escenario de clasificación multi-etiqueta desbalanceado.
 
-[DEMO](http://159.65.106.247:3000/)
-
+**[🚀 DEMO EN VIVO](http://159.65.106.247:3000/)**
 
 ## 🎨 Demostración Visual
 
-La aplicación fue desarrollada utilizando **V0 (Vercel)** con prompts en lenguaje natural, permitiendo un diseño web estético y funcional. A continuación se muestran las principales interfaces:
+La aplicación fue desarrollada utilizando **V0 (Vercel)** con prompts en lenguaje natural, permitiendo un diseño web estético y funcional:
 
 ### Página Principal - Clasificador
 ![Clasificador Principal](./frontend/public/evidencias/v0_1.png)
@@ -27,138 +26,84 @@ La aplicación fue desarrollada utilizando **V0 (Vercel)** con prompts en lengua
 ![Resultados](./frontend/public/evidencias/v0_2.png)
 *Visualización de resultados con categorías médicas coloreadas*
 
-### Dashboard de Rendimiento
-![Dashboard](./frontend/public/evidencias/v0_3.png)
-*Matrices de confusión y métricas de evaluación por categoría*
-
-### Métricas Globales
-![Métricas](./frontend/public/evidencias/v0_4.png)
-*Gráficos de barras con métricas F1 y rendimiento general del modelo*
-
-## 📚 Documentación
-
-### 📄 Documento Técnico Completo
-- **[Clasificación_Biomédica.pdf](./docs/Clasificación_Biomédica.pdf)** - Documentación técnica completa del proyecto incluyendo:
-  - Metodología de desarrollo
-  - Arquitectura del modelo ImprovedMedicalBERT
-  - Análisis detallado de resultados
-  - Proceso de entrenamiento y evaluación
-  - Comparación con otros enfoques
-  - Conclusiones y trabajo futuro
-
 ## 🏗️ Estructura del Proyecto
 
 ```
 Clasificacion_Biomedica/
-├── 📊 data/                    # Almacenamiento de datasets
-│   └── challenge_data-18-ago.csv
-├── 🎛️ config/                 # Archivos de configuración
-│   └── settings.py
-├── 🧠 models/                  # Modelos entrenados y artefactos
-│   └── trained_model/
-│       ├── config.json
-│       ├── model.pt
-│       ├── mlb.pkl
-│       ├── best_threshold.json
-│       └── archivos del tokenizer...
-├── 📓 notebooks/               # Notebooks de análisis Jupyter
-│   └── Medical_Classification_Analysis.ipynb
-├── 🔧 scripts/                 # Utilidades Python modulares
-│   ├── __init__.py             # Inicialización del package
-│   ├── __main__.py             # CLI para scripts (python -m scripts)
-│   ├── requirements.txt        # Dependencias de scripts
-│   ├── data_processing.py      # Carga y preprocesamiento de datos
-│   ├── visualization.py        # Gráficos y visualización (incluye curvas ROC)
-│   ├── model_utils.py          # Arquitecturas de modelos y datasets
-│   ├── training_utils.py       # Entrenamiento y evaluación
-│   ├── evaluation_utils.py     # Métricas integrales
-│   └── text_augmentation.py    # Aumento de datos
-├── 🚀 backend/                 # Servicio web FastAPI
-│   ├── main.py                 # Endpoints de la API
-│   ├── improved_medical_bert.py # Implementación del modelo personalizado
-│   ├── requirements.txt
-│   └── Dockerfile
-├── 🌐 frontend/                # Interfaz web Next.js
-│   ├── app/
-│   │   ├── page.tsx           # Página principal de clasificación
-│   │   ├── rendimiento/       # Página de métricas del modelo
-│   │   └── layout.tsx
-│   ├── components/            # Componentes UI reutilizables
-│   ├── package.json
-│   └── Dockerfile
-├── 📚 docs/                    # Documentación técnica
-│   └── Clasificación_Biomédica.pdf  # Documento técnico completo
-├── ⚙️ setup.bat                # Configuración del entorno (5 pasos)
-├── 🎯 start-backend.bat        # Lanzador del backend (Uvicorn)
-├── 🎯 start-frontend.bat       # Lanzador del frontend (Next.js)
-├── 🔧 start-scripts.bat        # CLI para scripts de utilidades
-├── 🐳 docker-compose.yml       # Orquestación de contenedores
-├── 🔧 .flake8                  # Configuración de linting
-├── 🔧 pyproject.toml           # Configuración de herramientas Python
-└── 📋 README.md               # Este archivo
+├── 📊 data/                    # Dataset biomédico
+├── 🧠 models/                  # Modelo ImprovedMedicalBERT entrenado
+├── 📓 notebooks/               # Análisis Jupyter completo
+├── 🔧 scripts/                 # Utilidades Python modulares + CLI
+├── 🚀 backend/                 # API FastAPI + Dockerfile
+├── 🌐 frontend/                # Next.js App + Dockerfile
+├── 📚 docs/                    # Documentación técnica PDF
+├── 🐳 docker-compose.yml       # Orquestación completa
+├── 📋 requirements.txt         # Todas las dependencias
+└── *.bat                       # Scripts de inicio Windows
 ```
 
-## 🚀 Inicio Rápido - Configuración Reproducible
+## 🚀 Inicio Rápido
 
-Este proyecto está diseñado para **reproducibilidad completa** usando archivos batch de Windows. Sigue estos pasos:
-
-### 1. Configuración del Entorno
+### Opción 1: Configuración Automatizada (Windows)
 ```cmd
 # Clona el repositorio
 git clone <repository-url>
 cd Clasificacion_Biomedica
 
-# Ejecuta la configuración automatizada
+# Configuración completa
 setup.bat
+
+# Iniciar servicios (en terminales separadas)
+start-backend.bat   # http://localhost:8000
+start-frontend.bat  # http://localhost:3000
 ```
 
-El archivo `setup.bat` realizará:
-- Crear y activar un entorno conda
-- Instalar todas las dependencias de Python
-- Configurar el entorno de desarrollo
-- Verificar las instalaciones
-
-### 2. Servicio Backend
-```cmd
-# Inicia el servidor FastAPI backend
-start-backend.bat
-```
-
-El archivo `start-backend.bat` realizará:
-- Activar el entorno conda
-- Navegar al directorio backend
-- Iniciar el servidor FastAPI en `http://localhost:8000`
-- Cargar el modelo ImprovedMedicalBERT entrenado
-- Habilitar CORS para comunicación con el frontend
-
-### 3. Interfaz Frontend
-```cmd
-# Inicia el frontend Next.js (en una nueva terminal)
-start-frontend.bat
-```
-
-El archivo `start-frontend.bat` realizará:
-- Navegar al directorio frontend
-- Instalar dependencias de Node.js (si es necesario)
-- Iniciar el servidor de desarrollo en `http://localhost:3000`
-- Habilitar hot reloading para desarrollo
-
-### 4. Despliegue con Docker (Alternativa)
-```cmd
-# Para despliegue containerizado
+### Opción 2: Docker (Cualquier SO)
+```bash
+# Construir y ejecutar todos los servicios
 docker-compose up --build
 ```
+
+### Opción 3: CLI de Scripts
+```bash
+# Ver todas las opciones disponibles
+python scripts --help
+
+# Entrenar modelo desde cero
+python scripts train --config configs/default.yaml
+
+# Evaluar modelo existente
+python scripts evaluate --model-path models/trained_model/
+```
+
+## 🔁 Reproducibilidad de Resultados
+
+Este repositorio incluye todo lo necesario para **reentrenar el modelo desde cero** y obtener resultados similares a los reportados en el documento técnico.
+
+1. Verifica que el dataset `data/challenge_data-18-ago.csv` esté disponible (ya incluido en el repositorio).
+2. Ejecuta el entrenamiento con la configuración base:
+   ```bash
+   python scripts train --config configs/default.yaml
+   ```
+   > ⚠️ Nota: Los resultados exactos pueden variar ligeramente entre ejecuciones debido a factores aleatorios (semilla, inicialización de pesos, hardware).
+3. Evalúa el modelo entrenado:
+   ```bash
+   python scripts evaluate --model-path models/trained_model/
+   ```
+4. Los resultados (F1 Score, Hamming Loss, métricas por clase y matrices de confusión) se generarán en la carpeta `results/` y podrán compararse con los valores reportados en [`docs/Clasificación_Biomédica.pdf`](docs/Clasificación_Biomédica.pdf).
+
 
 ## 🔬 Arquitectura del Modelo
 
 ### ImprovedMedicalBERT
 - **Modelo Base**: microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract
-- **Arquitectura**: Transformer con attention pooling
+- **Arquitectura**: Transformer con attention pooling personalizado
 - **Etiquetas**: 4 categorías médicas (clasificación multi-etiqueta)
+- **Threshold optimizado**: 0.36 para mejor F1 Score
 - **Entrada**: Títulos médicos + abstracts
 - **Salida**: Puntuaciones de probabilidad para cada categoría
 
-### Características Clave:
+### Características Clave
 - Mecanismo de attention pooling personalizado
 - Regularización con dropout (0.3)
 - Ponderación de clases positivas para datos desbalanceados
@@ -167,16 +112,23 @@ docker-compose up --build
 
 ## 📈 Métricas de Rendimiento
 
-El sistema rastrea métricas integrales de clasificación multi-etiqueta:
+### Matriz de Confusión por Categoría
 
-- **F1 Score**: Promedios Macro, Micro y Ponderado
-- **Precisión/Recall**: Por clase y promediados
-- **ROC-AUC**: Curvas individuales y macro-promediadas
-- **Hamming Loss**: Métrica específica para multi-etiqueta
-- **Exact Match Ratio**: Todas las etiquetas correctas
-- **Average Precision**: Área bajo la curva PR
+| Categoría      | Precisión | Recall | F1 Score | Soporte |
+|----------------|-----------|--------|----------|---------|
+| Cardiovascular | 0.95     | 0.93   | 0.94     | 157     |
+| Hepatorenal    | 0.97     | 0.96   | 0.97     | 142     |
+| Neurológica    | 0.94     | 0.97   | 0.95     | 165     |
+| Oncológica     | 0.93     | 0.94   | 0.94     | 159     |
 
-## 🚀 Uso de la API
+### Métricas Globales
+- **F1 Score Macro**: 0.949
+- **F1 Score Micro**: 0.943  
+- **F1 Score Weighted**: 0.943
+- **Hamming Loss**: 0.057
+- **Exact Match Ratio**: 0.887
+
+## 🛠️ API Endpoints
 
 ### Verificación de Salud
 ```bash
@@ -188,181 +140,17 @@ curl http://localhost:8000/health
 curl -X POST "http://localhost:8000/classify" \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "Análisis de Arritmias Cardíacas",
-    "abstract": "Este estudio examina arritmias cardíacas en pacientes..."
+    "title": "Infarto agudo de miocardio",
+    "abstract": "Estudio sobre factores de riesgo cardiovascular..."
   }'
 ```
 
-### Clasificación por Lotes
-```bash
-curl -X POST "http://localhost:8000/batch_classify" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "documents": [
-      {"title": "Estudio 1", "abstract": "Abstract 1..."},
-      {"title": "Estudio 2", "abstract": "Abstract 2..."}
-    ]
-  }'
-```
+## 📚 Documentación
 
-## 🐳 Soporte Docker
-
-### Contenedor Backend
-```dockerfile
-FROM python:3.11.5-slim
-
-# Establecer directorio de trabajo
-WORKDIR /app
-
-# Copiar archivos de dependencias primero (para cache de Docker)
-COPY backend/requirements.txt .
-
-# Instalar dependencias del sistema y Python
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/* \
-    && pip install --no-cache-dir -r requirements.txt
-
-# Copiar código del backend
-COPY backend/ .
-
-# Copiar modelos entrenados
-COPY models/ ./models/
-
-# Crear usuario no-root para seguridad
-RUN adduser --disabled-password --gecos '' appuser && \
-    chown -R appuser:appuser /app
-USER appuser
-
-# Exponer puerto
-EXPOSE 8000
-
-# Comando para ejecutar la aplicación
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Contenedor Frontend
-```dockerfile
-FROM node:18-alpine
-
-# Establecer directorio de trabajo
-WORKDIR /app
-
-# Copiar archivos de dependencias primero (para cache de Docker)
-COPY frontend/package*.json ./
-
-# Instalar dependencias
-RUN npm ci --only=production
-
-# Copiar código fuente
-COPY frontend/ .
-
-# Construir la aplicación
-RUN npm run build
-
-# Crear usuario no-root para seguridad
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001
-USER nextjs
-
-# Exponer puerto
-EXPOSE 3000
-
-# Comando para ejecutar la aplicación
-CMD ["npm", "start"]
-```
-
-### Docker Compose
-```yaml
-version: '3.8'
-
-services:
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - PYTHONPATH=/app
-    volumes:
-      - ./models:/app/models:ro
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    ports:
-      - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000
-    depends_on:
-      - backend
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
-```
-
-### 🚀 Despliegue en DigitalOcean
-
-```bash
-# Clonar el repositorio
-git clone <repository-url>
-cd Clasificacion_Biomedica
-
-# Construir y ejecutar con Docker Compose
-docker-compose up -d
-
-# Verificar que los servicios funcionan
-curl http://localhost/api/health  # Backend health check
-curl http://localhost             # Frontend
-
-# Ver logs de los contenedores
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# Detener los servicios
-docker-compose down
-```
-
-### 📋 Características de los Contenedores
-
-#### **Optimizaciones de Seguridad**
-- ✅ **Usuarios no-root** en ambos contenedores
-- ✅ **Dependencias mínimas** en imágenes slim/alpine
-- ✅ **Health checks** para monitoreo automático
-- ✅ **Volúmenes de solo lectura** para modelos
-
-#### **Optimizaciones de Performance**
-- 🚀 **Cache de Docker layers** optimizado
-- 🚀 **Build multi-stage** para imágenes más pequeñas
-- 🚀 **Restart policies** para alta disponibilidad
-- 🚀 **Nginx reverse proxy** para balanceo de carga
+📄 Documentación técnica detallada disponible en [`docs/Clasificación_Biomédica.pdf`](docs/Clasificación_Biomédica.pdf)
 
 ## 📄 Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT - ver el archivo LICENSE para detalles.
-
 
 ---

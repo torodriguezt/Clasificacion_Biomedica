@@ -9,10 +9,10 @@ services:
       - "8000:8000"
     environment:
       - MODEL_PATH=/app/models/
-      - THRESHOLD=0.6
+      - THRESHOLD=0.36
       - DEBUG=False
     volumes:
-      - ./backend/modelo:/app/models
+      - ./models:/app/models:ro
     networks:
       - biomedical-network
     healthcheck:

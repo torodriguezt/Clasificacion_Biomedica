@@ -35,6 +35,17 @@ La aplicación fue desarrollada utilizando **V0 (Vercel)** con prompts en lengua
 ![Métricas](./frontend/public/evidencias/v0_4.png)
 *Gráficos de barras con métricas F1 y rendimiento general del modelo*
 
+## 📚 Documentación
+
+### 📄 Documento Técnico Completo
+- **[Clasificación_Biomédica.pdf](./docs/Clasificación_Biomédica.pdf)** - Documentación técnica completa del proyecto incluyendo:
+  - Metodología de desarrollo
+  - Arquitectura del modelo ImprovedMedicalBERT
+  - Análisis detallado de resultados
+  - Proceso de entrenamiento y evaluación
+  - Comparación con otros enfoques
+  - Conclusiones y trabajo futuro
+
 ## 🏗️ Estructura del Proyecto
 
 ```
@@ -53,6 +64,9 @@ Clasificacion_Biomedica/
 ├── 📓 notebooks/               # Notebooks de análisis Jupyter
 │   └── Medical_Classification_Analysis.ipynb
 ├── 🔧 scripts/                 # Utilidades Python modulares
+│   ├── __init__.py             # Inicialización del package
+│   ├── __main__.py             # CLI para scripts (python -m scripts)
+│   ├── requirements.txt        # Dependencias de scripts
 │   ├── data_processing.py      # Carga y preprocesamiento de datos
 │   ├── visualization.py        # Gráficos y visualización (incluye curvas ROC)
 │   ├── model_utils.py          # Arquitecturas de modelos y datasets
@@ -72,10 +86,12 @@ Clasificacion_Biomedica/
 │   ├── components/            # Componentes UI reutilizables
 │   ├── package.json
 │   └── Dockerfile
-├── 📚 docs/                    # Documentación
-├── ⚙️ setup.bat                # Configuración del entorno
-├── 🎯 start-backend.bat        # Lanzador del backend
-├── 🎯 start-frontend.bat       # Lanzador del frontend
+├── 📚 docs/                    # Documentación técnica
+│   └── Clasificación_Biomédica.pdf  # Documento técnico completo
+├── ⚙️ setup.bat                # Configuración del entorno (5 pasos)
+├── 🎯 start-backend.bat        # Lanzador del backend (Uvicorn)
+├── 🎯 start-frontend.bat       # Lanzador del frontend (Next.js)
+├── 🔧 start-scripts.bat        # CLI para scripts de utilidades
 ├── 🐳 docker-compose.yml       # Orquestación de contenedores
 ├── 🔧 .flake8                  # Configuración de linting
 ├── 🔧 pyproject.toml           # Configuración de herramientas Python

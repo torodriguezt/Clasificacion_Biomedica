@@ -1,0 +1,14 @@
+# Medical Text Classification - Root Requirements
+# This file installs all dependencies for the complete project
+
+# Backend API dependencies
+-r backend/requirements.txt
+
+# Scripts dependencies  
+-r scripts/requirements.txt
+
+# Development tools
+jupyter>=1.0.0
+black>=23.7.0
+flake8>=6.0.0
+pytest>=7.4.0

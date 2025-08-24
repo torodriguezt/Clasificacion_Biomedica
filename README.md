@@ -2,8 +2,6 @@
 
 Un sistema integral de clasificación de textos biomédicos que utiliza ImprovedMedicalBERT para categorizar literatura médica en las categorías: cardiovascular, hepatorenal, neurológica y oncológica.
 
-[DEMO](http://159.65.106.247:3000/)
-
 ## 📊 Resultados Globales
 
 | Métrica              | Valor   |
@@ -13,6 +11,29 @@ Un sistema integral de clasificación de textos biomédicos que utiliza Improved
 | **F1 Score Micro**    | 0.943  |
 
 El modelo logra un **F1 Score Weighted de 0.9428**, mostrando un rendimiento muy alto y estable en un escenario de clasificación multi-etiqueta desbalanceado.
+
+[DEMO](http://159.65.106.247:3000/)
+
+
+## 🎨 Demostración Visual
+
+La aplicación fue desarrollada utilizando **V0 (Vercel)** con prompts en lenguaje natural, permitiendo un diseño web estético y funcional. A continuación se muestran las principales interfaces:
+
+### Página Principal - Clasificador
+![Clasificador Principal](./frontend/public/evidencias/v0_1.png)
+*Interfaz principal para clasificación de artículos biomédicos con IA*
+
+### Resultados de Clasificación
+![Resultados](./frontend/public/evidencias/v0_2.png)
+*Visualización de resultados con categorías médicas coloreadas*
+
+### Dashboard de Rendimiento
+![Dashboard](./frontend/public/evidencias/v0_3.png)
+*Matrices de confusión y métricas de evaluación por categoría*
+
+### Métricas Globales
+![Métricas](./frontend/public/evidencias/v0_4.png)
+*Gráficos de barras con métricas F1 y rendimiento general del modelo*
 
 ## 🏗️ Estructura del Proyecto
 

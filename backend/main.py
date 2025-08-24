@@ -240,107 +240,219 @@ async def batch_classify(documents: List[MedicalDocument]):
 async def csv_classify(file: UploadFile = File(...)):
     """Process a CSV file with multilabel medical articles for classification and evaluation."""
     
+    # Validate file type
     if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Solo se permiten archivos CSV")
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
     try:
-        # Read CSV content
+        # Read and decode CSV content
         content = await file.read()
         csv_content = content.decode('utf-8')
-        df = pd.read_csv(StringIO(csv_content))
         
-        # Clean column names
+        # Try to detect CSV delimiter automatically
+        try:
+            import csv
+            sniffer = csv.Sniffer()
+            delimiter = sniffer.sniff(csv_content[:1024]).delimiter
+            logger.info(f"Detected CSV delimiter: '{delimiter}'")
+        except:
+            delimiter = ','  # Default to comma
+            logger.info("Using default comma delimiter")
+        
+        # Read CSV with multiple fallback strategies
+        df = None
+        read_strategies = [
+            # Strategy 1: Use detected delimiter
+            {'delimiter': delimiter, 'quotechar': '"', 'skipinitialspace': True},
+            # Strategy 2: Standard comma-separated with quotes
+            {'delimiter': ',', 'quotechar': '"', 'skipinitialspace': True},
+            # Strategy 3: Semicolon-separated (European standard)
+            {'delimiter': ';', 'quotechar': '"', 'skipinitialspace': True},
+            # Strategy 4: Tab-separated
+            {'delimiter': '\t', 'quotechar': '"', 'skipinitialspace': True},
+            # Strategy 5: Pipe-separated
+            {'delimiter': '|', 'quotechar': '"', 'skipinitialspace': True},
+        ]
+        
+        for i, strategy in enumerate(read_strategies):
+            try:
+                df = pd.read_csv(StringIO(csv_content), **strategy, on_bad_lines='skip')
+                logger.info(f"Successfully read CSV with strategy {i+1}: {strategy}")
+                break
+            except Exception as e:
+                logger.warning(f"Strategy {i+1} failed: {e}")
+                continue
+        
+        if df is None:
+            raise HTTPException(status_code=400, detail="Could not parse CSV file. Please check the format.")
+        
+        # Clean column names by stripping spaces
         df.columns = df.columns.str.strip()
+        
+        # Log basic CSV info
+        logger.info(f"CSV loaded: {len(df)} rows, {len(df.columns)} columns")
+        logger.info(f"Columns: {list(df.columns)}")
         
         # Validate required columns
         required_columns = ['title', 'abstract', 'group']
+        
+        # Check if we have the right columns or if they're combined in one column
+        if len(df.columns) == 1 and any(';' in col for col in df.columns):
+            # Data is likely semicolon-separated but read as one column
+            logger.info("Detected semicolon-separated data in single column, re-parsing...")
+            df = pd.read_csv(StringIO(csv_content), delimiter=';', quotechar='"', skipinitialspace=True)
+            df.columns = df.columns.str.strip()
+            logger.info(f"Re-parsed CSV: {len(df)} rows, {len(df.columns)} columns")
+            logger.info(f"New columns: {list(df.columns)}")
+        
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
+            # Additional debug info
+            logger.error(f"Missing columns: {missing_columns}")
+            logger.error(f"Available columns: {list(df.columns)}")
+            logger.error(f"CSV sample (first 200 chars): {csv_content[:200]}")
             raise HTTPException(
                 status_code=400, 
-                detail=f"Columnas faltantes en el CSV: {missing_columns}. Se requieren: {required_columns}"
+                detail=f"Missing columns in CSV: {missing_columns}. Required columns are: {required_columns}. Available columns: {list(df.columns)}"
             )
         
-        # Process each row
-        results = []
-        predicted_labels = []
-        true_labels = []
+        # Clean and validate data
+        # Fill NaN values with empty strings for text columns
+        df['title'] = df['title'].fillna('')
+        df['abstract'] = df['abstract'].fillna('')
+        df['group'] = df['group'].fillna('')
         
-        # Helper function to clean NaN and inf values
+        # Remove rows where both title and abstract are empty
+        initial_rows = len(df)
+        df = df[(df['title'].str.strip() != '') | (df['abstract'].str.strip() != '')]
+        if len(df) != initial_rows:
+            logger.info(f"Removed {initial_rows - len(df)} rows with empty title and abstract")
+        
+        # Helper function to clean NaN and inf values for JSON serialization
         def clean_metric_value(value):
-            """Convert NaN and inf values to 0.0 for JSON serialization"""
             import numpy as np
             if np.isnan(value) or np.isinf(value):
                 return 0.0
             return float(value)
         
-        for _, row in df.iterrows():
-            # Get predictions for this row
-            preds = classifier.predict(row['title'], row['abstract'])
-            
-            # Clean predictions to ensure no NaN/inf values
-            cleaned_preds = {k: clean_metric_value(v) for k, v in preds.items()}
-            
-            # Get predicted labels above threshold
-            threshold = 0.36
-            pred_labels = [label for label, score in cleaned_preds.items() if score > threshold]
-            if not pred_labels:  # If no label above threshold, take the highest
-                pred_labels = [max(cleaned_preds, key=cleaned_preds.get)]
-            
-            # Get true labels (split by |)
-            true_group = str(row['group']).strip()
-            if true_group and true_group != 'nan':
-                true_label_list = [label.strip() for label in true_group.split('|') if label.strip()]
-            else:
-                true_label_list = []
-            
-            predicted_labels.append(pred_labels)
-            true_labels.append(true_label_list)
-            
-            results.append({
-                "title": row["title"],
-                "predictions": cleaned_preds,
-                "dominant_category": max(cleaned_preds, key=cleaned_preds.get),
-                "confidence": max(cleaned_preds.values()),
-                "predicted_labels": pred_labels,
-                "true_labels": true_label_list
-            })
+        # Process each row in the CSV
+        results = []
+        predicted_labels = []
+        true_labels = []
         
-        # Add predicted labels to dataframe (join with |)
-        df["group_predicted"] = ["|".join(labels) for labels in predicted_labels]
+        try:
+            for idx, row in df.iterrows():
+                try:
+                    # Predict labels
+                    preds = classifier.predict(row['title'], row['abstract'])
+                    cleaned_preds = {k: clean_metric_value(v) for k, v in preds.items()}
+                    
+                    # Apply threshold to predicted labels
+                    threshold = 0.36
+                    pred_labels = [label for label, score in cleaned_preds.items() if score > threshold]
+                    if not pred_labels:
+                        pred_labels = [max(cleaned_preds, key=cleaned_preds.get)]
+                    
+                    # Sort predicted labels for consistent ordering
+                    pred_labels.sort()
+                    
+                    # Process true labels with flexible separator detection
+                    true_group = str(row['group']).strip()
+                    true_label_list = []
+                    
+                    if true_group and true_group != 'nan' and true_group.lower() != 'none':
+                        # Try to detect the separator used
+                        # Priority: | (pipe) > , (comma) > ; (semicolon)
+                        if '|' in true_group:
+                            # Split by pipe separator
+                            true_label_list = [label.strip() for label in true_group.split('|') if label.strip()]
+                        elif ',' in true_group:
+                            # Split by comma separator
+                            true_label_list = [label.strip() for label in true_group.split(',') if label.strip()]
+                        elif ';' in true_group:
+                            # Split by semicolon separator
+                            true_label_list = [label.strip() for label in true_group.split(';') if label.strip()]
+                        else:
+                            # Single value - ensure it's valid
+                            clean_label = true_group.strip()
+                            if clean_label and clean_label.lower() not in ['', 'none', 'null', 'nan']:
+                                true_label_list = [clean_label]
+                        
+                        # Validate labels against known categories
+                        valid_categories = set(classifier.categories)
+                        validated_labels = []
+                        for label in true_label_list:
+                            # Clean and normalize the label
+                            clean_label = label.lower().strip()
+                            # Try exact match first
+                            if clean_label in valid_categories:
+                                validated_labels.append(clean_label)
+                            else:
+                                # Try partial matching
+                                for valid_cat in valid_categories:
+                                    if clean_label in valid_cat or valid_cat in clean_label:
+                                        validated_labels.append(valid_cat)
+                                        break
+                        
+                        true_label_list = list(set(validated_labels))  # Remove duplicates
+                        true_label_list.sort()  # Sort for consistent ordering
+                        
+                        # Log the processing for debugging (first 5 rows)
+                        if len(results) < 5:
+                            separator_used = '|' if '|' in true_group else ',' if ',' in true_group else ';' if ';' in true_group else 'none'
+                            logger.info(f"Row {len(results)+1}: Original='{true_group}' -> Separator='{separator_used}' -> Labels={true_label_list}")
+                    
+                    predicted_labels.append(pred_labels)
+                    true_labels.append(true_label_list)
+                    
+                    results.append({
+                        "title": row["title"],
+                        "predictions": cleaned_preds,
+                        "dominant_category": max(cleaned_preds, key=cleaned_preds.get),
+                        "confidence": max(cleaned_preds.values()),
+                        "predicted_labels": pred_labels,
+                        "true_labels": true_label_list
+                    })
+                    
+                except Exception as row_error:
+                    logger.error(f"Error processing row {idx}: {row_error}")
+                    logger.error(f"Row data: {dict(row)}")
+                    continue  # Skip this row and continue with the next
+                    
+        except Exception as processing_error:
+            logger.error(f"Error in main processing loop: {processing_error}")
+            raise HTTPException(status_code=500, detail=f"Error processing CSV data: {str(processing_error)}")
         
-        # Calculate metrics using multilabel approach
+        if not results:
+            raise HTTPException(status_code=400, detail="No valid rows could be processed from the CSV file")
+        
+        # Add predicted labels to the dataframe
+        # Sort labels for consistent output
+        df["group_predicted"] = ["|".join(sorted(labels)) for labels in predicted_labels]
+        
+        # Initialize metrics dictionary
         metrics = {}
         if true_labels and any(true_labels):
+            # Multi-label evaluation
             from sklearn.preprocessing import MultiLabelBinarizer
             from sklearn.metrics import precision_score, recall_score, f1_score, confusion_matrix, hamming_loss, jaccard_score
             import numpy as np
             
             # Get all possible labels
             all_categories = classifier.categories
-            
-            # Use MultiLabelBinarizer
             mlb = MultiLabelBinarizer(classes=all_categories)
             
-            # Transform to binary matrices
+            # Transform labels to binary format
             y_true_binary = mlb.fit_transform(true_labels)
             y_pred_binary = mlb.transform(predicted_labels)
             
-            # Calculate multilabel-specific metrics with additional validation
             try:
-                # Subset accuracy (exact match ratio)
+                # Calculate metrics
                 subset_accuracy = np.mean([np.array_equal(true_row, pred_row) for true_row, pred_row in zip(y_true_binary, y_pred_binary)])
-                
-                # Hamming loss (fraction of wrong labels)
                 hamming_loss_score = hamming_loss(y_true_binary, y_pred_binary)
+                jaccard_similarity = jaccard_score(y_true_binary, y_pred_binary, average='samples', zero_division=0) if np.any(y_true_binary) or np.any(y_pred_binary) else 0.0
                 
-                # Jaccard similarity (IoU for multilabel) - handle empty predictions
-                if np.any(y_true_binary) or np.any(y_pred_binary):
-                    jaccard_similarity = jaccard_score(y_true_binary, y_pred_binary, average='samples', zero_division=0)
-                else:
-                    jaccard_similarity = 0.0
-                
-                # F1 scores with better handling
+                # F1 scores
                 precision = precision_score(y_true_binary, y_pred_binary, average='weighted', zero_division=0)
                 recall = recall_score(y_true_binary, y_pred_binary, average='weighted', zero_division=0)
                 f1_weighted = f1_score(y_true_binary, y_pred_binary, average='weighted', zero_division=0)
@@ -351,43 +463,20 @@ async def csv_classify(file: UploadFile = File(...)):
                 # Per-class F1 scores
                 f1_per_class = f1_score(y_true_binary, y_pred_binary, average=None, zero_division=0)
                 f1_class_dict = {all_categories[i]: clean_metric_value(f1_per_class[i]) for i in range(len(all_categories))}
-                
             except Exception as metric_error:
-                logger.warning(f"Error calculating some metrics: {metric_error}")
-                # Set default values if metric calculation fails
+                logger.warning(f"Error calculating metrics: {metric_error}")
+                # Set default values if calculation fails
                 subset_accuracy = 0.0
                 hamming_loss_score = 1.0
                 jaccard_similarity = 0.0
-                precision = 0.0
-                recall = 0.0
-                f1_weighted = 0.0
-                f1_macro = 0.0
-                f1_micro = 0.0
-                f1_samples = 0.0
+                precision = recall = f1_weighted = f1_macro = f1_micro = f1_samples = 0.0
                 f1_class_dict = {cat: 0.0 for cat in all_categories}
             
-            # For confusion matrix, we'll use label-based approach
-            # Convert to single-label format for confusion matrix (using dominant labels)
-            y_true_single = []
-            y_pred_single = []
-            
-            for i, (true_labs, pred_labs) in enumerate(zip(true_labels, predicted_labels)):
-                if true_labs:
-                    # Take the label with highest prediction score among true labels
-                    true_dominant = max(true_labs, key=lambda x: results[i]["predictions"].get(x, 0))
-                    y_true_single.append(true_dominant)
-                else:
-                    y_true_single.append("unknown")
-                    
-                if pred_labs:
-                    # Take the label with highest prediction score among predicted labels
-                    pred_dominant = max(pred_labs, key=lambda x: results[i]["predictions"].get(x, 0))
-                    y_pred_single.append(pred_dominant)
-                else:
-                    y_pred_single.append("unknown")
-            
-            # Create confusion matrix only for known labels
+            # Confusion Matrix (per label)
+            y_true_single = [max(true_labs, key=lambda x: results[i]["predictions"].get(x, 0)) if true_labs else "unknown" for i, true_labs in enumerate(true_labels)]
+            y_pred_single = [max(pred_labs, key=lambda x: results[i]["predictions"].get(x, 0)) if pred_labs else "unknown" for i, pred_labs in enumerate(predicted_labels)]
             valid_indices = [i for i, (t, p) in enumerate(zip(y_true_single, y_pred_single)) if t != "unknown" and p != "unknown"]
+            
             if valid_indices:
                 y_true_cm = [y_true_single[i] for i in valid_indices]
                 y_pred_cm = [y_pred_single[i] for i in valid_indices]
@@ -396,55 +485,39 @@ async def csv_classify(file: UploadFile = File(...)):
                 cm = np.zeros((len(all_categories), len(all_categories)))
             
             metrics = {
-                "confusion_matrix": {
-                    "matrix": cm.tolist(),
-                    "labels": all_categories,
-                    "format": "rows=true_labels, cols=predicted_labels"
-                },
-                "f1_scores": {
-                    "macro": clean_metric_value(f1_macro),
-                    "micro": clean_metric_value(f1_micro),
-                    "weighted": clean_metric_value(f1_weighted),
-                    "samples": clean_metric_value(f1_samples),
-                    "per_class": f1_class_dict
-                },
-                "accuracy": {
-                    "subset_accuracy": clean_metric_value(subset_accuracy),
-                    "jaccard_similarity": clean_metric_value(jaccard_similarity)
-                },
-                "hamming_loss": clean_metric_value(hamming_loss_score),
-                "precision": clean_metric_value(precision),
-                "recall": clean_metric_value(recall)
+                "confusion_matrix": {"matrix": cm.tolist(), "labels": all_categories, "format": "rows=true_labels, cols=predicted_labels"},
+                "f1_scores": {"macro": f1_macro, "micro": f1_micro, "weighted": f1_weighted, "samples": f1_samples, "per_class": f1_class_dict},
+                "accuracy": {"subset_accuracy": subset_accuracy, "jaccard_similarity": jaccard_similarity},
+                "hamming_loss": hamming_loss_score,
+                "precision": precision,
+                "recall": recall
             }
             
             logger.info(f"Confusion Matrix:\n{cm}")
-            logger.info(f"F1 Score (weighted): {clean_metric_value(f1_weighted):.4f}")
-            logger.info(f"Subset Accuracy: {clean_metric_value(subset_accuracy):.4f}")
-            logger.info(f"Jaccard Similarity: {clean_metric_value(jaccard_similarity):.4f}")
-            logger.info(f"Hamming Loss: {clean_metric_value(hamming_loss_score):.4f}")
-
+            logger.info(f"F1 Score (weighted): {f1_weighted:.4f}")
+            logger.info(f"Subset Accuracy: {subset_accuracy:.4f}")
+            logger.info(f"Jaccard Similarity: {jaccard_similarity:.4f}")
+            logger.info(f"Hamming Loss: {hamming_loss_score:.4f}")
+        
+        # Prepare final response
         response = {
             "predictions": results, 
             "data": df.to_dict(orient="records"),
             "total_processed": len(results)
         }
         
-        # Only add metrics if we have true labels
         if metrics:
             response["evaluation_metrics"] = metrics
-
-        # Final cleanup of the entire response to ensure no NaN/inf values
+        
+        # Clean response to remove NaN/inf values
         def deep_clean_response(obj):
-            """Recursively clean all NaN and inf values from a nested structure"""
             import numpy as np
             if isinstance(obj, dict):
                 return {k: deep_clean_response(v) for k, v in obj.items()}
             elif isinstance(obj, list):
                 return [deep_clean_response(v) for v in obj]
             elif isinstance(obj, (int, float, np.number)):
-                if np.isnan(obj) or np.isinf(obj):
-                    return 0.0
-                return float(obj)
+                return float(obj) if not (np.isnan(obj) or np.isinf(obj)) else 0.0
             else:
                 return obj
         
@@ -453,214 +526,10 @@ async def csv_classify(file: UploadFile = File(...)):
 
     except Exception as e:
         logger.error(f"Error processing CSV: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error al procesar el archivo CSV: {str(e)}")
-        # Read CSV file
-        contents = await file.read()
-        data = StringIO(contents.decode("utf-8"))
-        df = pd.read_csv(data)
+        raise HTTPException(status_code=500, detail=f"Error processing the CSV file: {str(e)}")
 
-        # Clean column names (remove extra spaces)
-        df.columns = df.columns.str.strip()
-
-        # Ensure 'title' and 'abstract' columns are present
-        if "title" not in df.columns or "abstract" not in df.columns:
-            raise HTTPException(status_code=400, detail="CSV debe contener 'title' y 'abstract'")
-
-        # Ensure 'group' column is present, and handle missing values
-        if "group" not in df.columns:
-            raise HTTPException(status_code=400, detail="CSV debe contener 'group'")
-
-        # Split group values into lists and handle missing or empty groups
-        # Check if groups contain "|" separator for multi-label, otherwise treat as single label
-        df["group"] = df["group"].apply(lambda x: 
-            [label.strip() for label in x.split("|")] if isinstance(x, str) and x.strip() != "" and "|" in x 
-            else [x.strip()] if isinstance(x, str) and x.strip() != "" 
-            else []
-        )
-
-        # Debugging: Log the processed 'group' column
-        logger.info(f"Processed 'group' column: {df['group'].head()}")
-
-        # Process each row in the CSV file
-        results = []
-        predicted_labels = []
-        threshold = 0.36  # Adjust threshold for multi-label classification
-
-        for _, row in df.iterrows():
-            preds = classifier.predict(row['title'], row['abstract'])
-            predicted_labels.append([label for label, score in preds.items() if score > threshold])  # Multi-label prediction
-            
-            results.append(
-                {
-                    "title": row["title"],
-                    "predictions": preds,
-                    "dominant_category": max(preds, key=lambda k: preds[k]),  # Dominant category for reporting
-                    "confidence": preds[max(preds, key=lambda k: preds[k])],
-                }
-            )
-
-        # Add predicted group to the DataFrame
-        df["group_predicted"] = predicted_labels
-
-        # Initialize metrics dictionary
-        metrics = {}
-
-        # Calculate metrics if we have true labels
-        if "group" in df.columns and df["group"].notnull().any():
-            true_labels = df["group"].tolist()
-
-            # Debugging: Log true labels for metrics calculation
-            logger.info(f"True labels for metrics calculation: {true_labels[:5]}")
-
-            if not any(true_labels):  # If true_labels is empty, handle gracefully
-                raise HTTPException(status_code=400, detail="No valid labels found in the 'group' column.")
-
-            # Check if this is truly multi-label or single-label
-            is_multi_label = any(len(labels) > 1 for labels in true_labels) or any(len(labels) > 1 for labels in predicted_labels)
-            
-            if is_multi_label:
-                # Convert to binary format for multi-label classification
-                from sklearn.preprocessing import MultiLabelBinarizer
-                
-                mlb = MultiLabelBinarizer()
-                # Combine all unique labels from true and predicted
-                all_labels = set()
-                for labels in true_labels + predicted_labels:
-                    all_labels.update(labels)
-                # Ensure we include all classifier categories
-                if hasattr(classifier, 'categories'):
-                    all_labels.update(classifier.categories)
-                mlb.fit([list(all_labels)])
-                
-                # Transform true and predicted labels to binary format
-                y_true_binary = mlb.transform(true_labels)
-                y_pred_binary = mlb.transform(predicted_labels)
-                classes = mlb.classes_
-            else:
-                # Handle single-label classification
-                # Flatten the single-element lists
-                y_true_flat = [labels[0] if labels else 'unknown' for labels in true_labels]
-                y_pred_flat = [labels[0] if labels else 'unknown' for labels in predicted_labels]
-                
-                # Convert to binary format for consistent metric calculation
-                from sklearn.preprocessing import LabelBinarizer
-                lb = LabelBinarizer()
-                
-                # Get all unique labels
-                all_labels = list(set(y_true_flat + y_pred_flat))
-                if hasattr(classifier, 'categories'):
-                    all_labels.extend([cat for cat in classifier.categories if cat not in all_labels])
-                lb.fit(all_labels)
-                
-                y_true_binary = lb.transform(y_true_flat)
-                y_pred_binary = lb.transform(y_pred_flat)
-                
-                # If binary classification, reshape to 2D
-                if len(all_labels) == 2:
-                    y_true_binary = np.column_stack([1 - y_true_binary.ravel(), y_true_binary.ravel()])
-                    y_pred_binary = np.column_stack([1 - y_pred_binary.ravel(), y_pred_binary.ravel()])
-                
-                classes = lb.classes_
-            
-            # Get the classes (categories) used by the binarizer
-            # classes already defined above in both cases
-
-            # Calculate F1 scores for multi-label classification
-            f1_samples = f1_score(y_true_binary, y_pred_binary, average='samples', zero_division=1)
-            f1_macro = f1_score(y_true_binary, y_pred_binary, average='macro', zero_division=1)
-            f1_micro = f1_score(y_true_binary, y_pred_binary, average='micro', zero_division=1)
-            f1_weighted = f1_score(y_true_binary, y_pred_binary, average='weighted', zero_division=1)
-
-            # F1 score per class (multi-label)
-            f1_per_class = f1_score(y_true_binary, y_pred_binary, average=None, zero_division=1)
-            f1_class_dict = {classes[i]: float(f1_per_class[i]) for i in range(len(classes))}
-
-            # Calculate precision and recall
-            from sklearn.metrics import precision_score, recall_score, accuracy_score
-            
-            precision_samples = precision_score(y_true_binary, y_pred_binary, average='samples', zero_division=1)
-            precision_macro = precision_score(y_true_binary, y_pred_binary, average='macro', zero_division=1)
-            precision_micro = precision_score(y_true_binary, y_pred_binary, average='micro', zero_division=1)
-            precision_weighted = precision_score(y_true_binary, y_pred_binary, average='weighted', zero_division=1)
-            
-            recall_samples = recall_score(y_true_binary, y_pred_binary, average='samples', zero_division=1)
-            recall_macro = recall_score(y_true_binary, y_pred_binary, average='macro', zero_division=1)
-            recall_micro = recall_score(y_true_binary, y_pred_binary, average='micro', zero_division=1)
-            recall_weighted = recall_score(y_true_binary, y_pred_binary, average='weighted', zero_division=1)
-
-            # Subset accuracy (exact match ratio)
-            subset_accuracy = accuracy_score(y_true_binary, y_pred_binary)
-            
-            # Hamming loss (fraction of labels that are incorrectly predicted)
-            from sklearn.metrics import hamming_loss
-            hamming_loss_score = hamming_loss(y_true_binary, y_pred_binary)
-
-            # Create confusion matrix for each label
-            confusion_matrices = {}
-            for i, label in enumerate(classes):
-                cm_label = confusion_matrix(y_true_binary[:, i], y_pred_binary[:, i])
-                confusion_matrices[label] = cm_label.tolist()
-
-            metrics = {
-                "classification_type": "multi_label" if is_multi_label else "single_label",
-                "confusion_matrices": {
-                    "per_label": confusion_matrices,
-                    "format": "Binary confusion matrix per label (rows=true, cols=predicted)"
-                },
-                "f1_scores": {
-                    "samples": float(f1_samples),
-                    "macro": float(f1_macro),
-                    "micro": float(f1_micro),
-                    "weighted": float(f1_weighted),
-                    "per_class": f1_class_dict
-                },
-                "precision": {
-                    "samples": float(precision_samples),
-                    "macro": float(precision_macro),
-                    "micro": float(precision_micro),
-                    "weighted": float(precision_weighted)
-                },
-                "recall": {
-                    "samples": float(recall_samples),
-                    "macro": float(recall_macro),
-                    "micro": float(recall_micro),
-                    "weighted": float(recall_weighted)
-                },
-                "accuracy": {
-                    "subset_accuracy": float(subset_accuracy),  # Exact match
-                    "hamming_loss": float(hamming_loss_score)   # Label-wise accuracy
-                },
-                "sample_count": len(true_labels),
-                "labels_used": classes.tolist()
-            }
-
-            # Log metrics
-            logger.info(f"Classification type: {'Multi-label' if is_multi_label else 'Single-label'}")
-            logger.info(f"F1 Score (samples): {f1_samples:.4f}")
-            logger.info(f"F1 Score (macro): {f1_macro:.4f}")
-            logger.info(f"F1 Score (micro): {f1_micro:.4f}")
-            logger.info(f"F1 Score (weighted): {f1_weighted:.4f}")
-            logger.info(f"Subset Accuracy: {subset_accuracy:.4f}")
-            logger.info(f"Hamming Loss: {hamming_loss_score:.4f}")
-
-        # Prepare the response
-        response = {
-            "predictions": results, 
-            "data": df.to_dict(orient="records"),
-            "total_processed": len(results)
-        }
-
-        # Only add metrics if we have true labels
-        if metrics:
-            response["evaluation_metrics"] = metrics
-
-        return response
-
-    except Exception as e:
-        logger.error(f"Error al procesar el archivo CSV: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error al procesar el archivo CSV: {str(e)}")
     
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

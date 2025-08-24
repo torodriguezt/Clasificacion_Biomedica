@@ -98,7 +98,7 @@ export default function CSVUpload() {
       const formData = new FormData()
       formData.append("file", file)
 
-      const response = await fetch('http://159.65.106.247:8000/csv_classify', {
+      const response = await fetch('http://localhost:8001/csv_classify', {
         method: 'POST',
         body: formData,
       })
@@ -518,7 +518,25 @@ export default function CSVUpload() {
                         <tbody>
                           {result.data.slice(0, 50).map((row, index) => {
                             const prediction = result.predictions[index];
-                            const isCorrect = row.group === row.group_predicted;
+                            
+                            // Function to normalize and compare multilabel sets
+                            const normalizeLabels = (labelString: string): Set<string> => {
+                              if (!labelString || labelString === 'nan' || labelString === 'null') return new Set();
+                              return new Set(
+                                labelString
+                                  .split(/[|,;]/) // Split by pipe, comma, or semicolon
+                                  .map(label => label.trim().toLowerCase())
+                                  .filter(label => label && label !== 'nan' && label !== 'null')
+                              );
+                            };
+                            
+                            const trueLabelsSet = normalizeLabels(row.group || '');
+                            const predLabelsSet = normalizeLabels(row.group_predicted || '');
+                            
+                            // Compare sets (order-independent)
+                            const isCorrect = trueLabelsSet.size === predLabelsSet.size && 
+                              [...trueLabelsSet].every(label => predLabelsSet.has(label));
+                            
                             const title = row.title?.substring(0, 60) + (row.title?.length > 60 ? '...' : '');
                             
                             return (

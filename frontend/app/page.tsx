@@ -31,7 +31,7 @@ export default function MedicalClassifier() {
 
     try {
       // Call the FastAPI backend
-      const response = await fetch('http://159.65.106.247:8000/classify', {
+      const response = await fetch('http://localhost:8001/classify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

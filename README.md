@@ -27,7 +27,7 @@ La aplicación fue desarrollada utilizando **V0 (Vercel)** con prompts en lengua
 *Visualización de resultados con categorías médicas coloreadas*
 
 ### Subir CSV
-![Resultados](./frontend/public/evidencias/v05.png)
+![Resultados](./frontend/public/evidencias/v0_5.png)
 *Visualización de resultados con categorías médicas coloreadas*
 
 

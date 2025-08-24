@@ -1,9 +1,0 @@
-{
-  "model_name": "ImprovedMedicalBERT",
-  "base_model_name": "microsoft/BiomedNLP-PubMedBERT-base-uncased-abstract",
-  "hidden_size": 192,
-  "num_labels": 4,
-  "dropout": 0.3,
-  "pos_weight": null,
-  "max_length": 512
-}

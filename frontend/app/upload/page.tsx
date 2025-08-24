@@ -30,9 +30,16 @@ type UploadResult = {
       macro: number
       micro: number
       weighted: number
+      samples: number
       per_class: Record<string, number>
     }
-    accuracy: number
+    accuracy: {
+      subset_accuracy: number
+      jaccard_similarity: number
+    }
+    hamming_loss: number
+    precision: number
+    recall: number
   }
 }
 
@@ -345,7 +352,7 @@ export default function CSVUpload() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="text-2xl font-bold text-blue-600">
                           {(result.evaluation_metrics.f1_scores.weighted * 100).toFixed(1)}%
@@ -354,15 +361,43 @@ export default function CSVUpload() {
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
                         <div className="text-2xl font-bold text-green-600">
-                          {(result.evaluation_metrics.accuracy * 100).toFixed(1)}%
+                          {(result.evaluation_metrics.accuracy.subset_accuracy * 100).toFixed(1)}%
                         </div>
-                        <div className="text-sm text-green-800 font-medium">Exactitud</div>
+                        <div className="text-sm text-green-800 font-medium">Exactitud Subconjunto</div>
                       </div>
                       <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
                         <div className="text-2xl font-bold text-purple-600">
+                          {(result.evaluation_metrics.accuracy.jaccard_similarity * 100).toFixed(1)}%
+                        </div>
+                        <div className="text-sm text-purple-800 font-medium">Similitud Jaccard</div>
+                      </div>
+                      <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="text-2xl font-bold text-orange-600">
+                          {(result.evaluation_metrics.f1_scores.samples * 100).toFixed(1)}%
+                        </div>
+                        <div className="text-sm text-orange-800 font-medium">F1-Score Muestras</div>
+                      </div>
+                    </div>
+                    
+                    {/* Additional Metrics */}
+                    <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+                      <div className="text-center p-3 bg-gray-50 rounded border">
+                        <div className="font-semibold text-gray-700">
+                          {(result.evaluation_metrics.hamming_loss * 100).toFixed(2)}%
+                        </div>
+                        <div className="text-gray-600">Pérdida Hamming</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded border">
+                        <div className="font-semibold text-gray-700">
                           {(result.evaluation_metrics.f1_scores.macro * 100).toFixed(1)}%
                         </div>
-                        <div className="text-sm text-purple-800 font-medium">F1-Score Macro</div>
+                        <div className="text-gray-600">F1-Score Macro</div>
+                      </div>
+                      <div className="text-center p-3 bg-gray-50 rounded border">
+                        <div className="font-semibold text-gray-700">
+                          {(result.evaluation_metrics.f1_scores.micro * 100).toFixed(1)}%
+                        </div>
+                        <div className="text-gray-600">F1-Score Micro</div>
                       </div>
                     </div>
                   </CardContent>

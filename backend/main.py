@@ -1,17 +1,19 @@
-# main.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import List, Dict
-from pathlib import Path
 import logging
 import json
 import torch
 import joblib
-
+import pandas as pd
+from io import StringIO
 from transformers import AutoTokenizer
 from improved_medical_bert import ImprovedMedicalBERT  # tu clase custom
+from pathlib import Path
+from sklearn.metrics import confusion_matrix, f1_score
+import numpy as np
 
 # =======================
 # Configuración
@@ -54,8 +56,8 @@ class ClassificationResult(BaseModel):
 # Clasificador
 # =======================
 class MedicalClassifier:
-    def __init__(self, model_dir: Path):
-        self.model_dir = Path(model_dir)
+    def __init__(self, model_dir: str):
+        self.model_dir = model_dir
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model_loaded = False
         self.threshold = 0.36  # THRESHOLD REAL DEL MODELO
@@ -233,6 +235,91 @@ async def batch_classify(documents: List[MedicalDocument]):
     return {"results": results, "total_processed": len(documents)}
 
 
+@app.post("/csv_classify")
+async def csv_classify(file: UploadFile = File(...)):
+    try:
+        # Read CSV file
+        contents = await file.read()
+        data = StringIO(contents.decode("utf-8"))
+        df = pd.read_csv(data)
+
+        if "title" not in df.columns or "abstract" not in df.columns:
+            raise HTTPException(status_code=400, detail="CSV debe contener 'title' y 'abstract'")
+
+        # Process each row in the CSV file
+        results = []
+        predicted_labels = []
+        
+        for _, row in df.iterrows():
+            preds = classifier.predict(row['title'], row['abstract'])
+            dom = max(preds, key=lambda k: preds[k])
+            predicted_labels.append(dom)
+            
+            results.append(
+                {
+                    "title": row["title"],
+                    "predictions": preds,
+                    "dominant_category": dom,
+                    "confidence": preds[dom],
+                }
+            )
+
+        # Add predicted group to the DataFrame
+        df["group_predicted"] = predicted_labels
+        
+        # Calculate metrics if we have true labels
+        metrics = {}
+        if "group" in df.columns:
+            true_labels = df["group"].tolist()
+            
+            # Calculate confusion matrix
+            cm = confusion_matrix(true_labels, predicted_labels, labels=classifier.categories)
+            
+            # Calculate F1 scores
+            f1_macro = f1_score(true_labels, predicted_labels, labels=classifier.categories, average='macro')
+            f1_micro = f1_score(true_labels, predicted_labels, labels=classifier.categories, average='micro')
+            f1_weighted = f1_score(true_labels, predicted_labels, labels=classifier.categories, average='weighted')
+            
+            # F1 score por clase
+            f1_per_class = f1_score(true_labels, predicted_labels, labels=classifier.categories, average=None)
+            f1_class_dict = {classifier.categories[i]: float(f1_per_class[i]) for i in range(len(classifier.categories))}
+            
+            metrics = {
+                "confusion_matrix": {
+                    "matrix": cm.tolist(),
+                    "labels": classifier.categories,
+                    "format": "rows=true_labels, cols=predicted_labels"
+                },
+                "f1_scores": {
+                    "macro": float(f1_macro),
+                    "micro": float(f1_micro),
+                    "weighted": float(f1_weighted),
+                    "per_class": f1_class_dict
+                },
+                "accuracy": float(np.mean(np.array(true_labels) == np.array(predicted_labels)))
+            }
+            
+            logger.info(f"Confusion Matrix:\n{cm}")
+            logger.info(f"F1 Score (macro): {f1_macro:.4f}")
+            logger.info(f"F1 Score (micro): {f1_micro:.4f}")
+            logger.info(f"F1 Score (weighted): {f1_weighted:.4f}")
+            logger.info(f"Accuracy: {metrics['accuracy']:.4f}")
+
+        response = {
+            "predictions": results, 
+            "data": df.to_dict(orient="records"),
+            "total_processed": len(results)
+        }
+        
+        # Only add metrics if we have true labels
+        if metrics:
+            response["evaluation_metrics"] = metrics
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al procesar el archivo CSV: {str(e)}")
+    
 if __name__ == "__main__":
     import uvicorn
 

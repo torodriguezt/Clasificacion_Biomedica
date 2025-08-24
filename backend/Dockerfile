@@ -15,13 +15,16 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && pip install uvicorn[standard]
 
 # Copy application code
-COPY . .
+COPY backend/ .
 
 # Create models directory
 RUN mkdir -p /app/models
+
+# ✅ Add /app to PYTHONPATH so "backend" is importable
+ENV PYTHONPATH=/app
 
 # Expose port
 EXPOSE 8000

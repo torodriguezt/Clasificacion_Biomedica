@@ -21,12 +21,17 @@ from typing import Optional
 # Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from scripts.data_processing import load_medical_data, preprocess_text, create_train_test_split
-from scripts.model_utils import MedicalTextDataset, get_device_info
-from scripts.training_utils import train_model, evaluate_model
-from scripts.evaluation_utils import calculate_comprehensive_metrics, generate_classification_report
-from scripts.visualization import plot_confusion_matrices, plot_roc_curves, plot_metrics_comparison
-from scripts.text_augmentation import augment_medical_texts
+try:
+    from scripts.data_processing import load_medical_data, clean_medical_text, split_medical_data
+    from scripts.model_utils import MedicalDataset, create_data_loaders, calculate_class_weights
+    from scripts.training_utils import train_model, evaluate_model
+    from scripts.evaluation_utils import compute_multilabel_metrics, find_optimal_thresholds, plot_confusion_matrices
+    from scripts.visualization import plot_roc_curves, plot_label_distribution, plot_text_length_distribution
+    from scripts.text_augmentation import augment_medical_texts
+    DEPENDENCIES_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Some dependencies not available. Install requirements.txt first. Error: {e}")
+    DEPENDENCIES_AVAILABLE = False
 
 # Configure logging
 logging.basicConfig(
@@ -113,10 +118,10 @@ def cmd_preprocess(args) -> None:
     df = load_medical_data(args.input)
     
     logger.info("Preprocessing text data")
-    df = preprocess_text(df)
+    df = clean_medical_text(df)
     
     logger.info(f"Creating train/test split (test_size={args.test_size})")
-    train_data, test_data = create_train_test_split(
+    train_data, test_data = split_medical_data(
         df, test_size=args.test_size, random_state=args.random_state
     )
     
@@ -167,7 +172,7 @@ def cmd_visualize(args) -> None:
         
     if args.plot_type in ['metrics', 'all']:
         logger.info("Generating metrics comparison plots")
-        # Implementation would call plot_metrics_comparison()
+        # Implementation would call plot_label_distribution()
     
     logger.warning("Visualization implementation not yet complete. Please use the Jupyter notebook for plots.")
 
@@ -179,6 +184,31 @@ def cmd_augment(args) -> None:
     
     # Implementation would go here
     logger.warning("Augmentation implementation not yet complete.")
+
+
+def get_device_info() -> dict:
+    """Get basic device and environment information."""
+    import sys
+    import platform
+    
+    info = {
+        "Python Version": sys.version.split()[0],
+        "Platform": platform.platform(),
+    }
+    
+    try:
+        import torch
+        info["PyTorch Version"] = torch.__version__
+        info["CUDA Available"] = torch.cuda.is_available()
+        
+        if torch.cuda.is_available():
+            info["CUDA Version"] = torch.version.cuda
+            info["GPU Count"] = torch.cuda.device_count()
+            info["GPU Name"] = torch.cuda.get_device_name(0)
+    except ImportError:
+        info["PyTorch"] = "Not installed"
+    
+    return info
 
 
 def cmd_device_info(args) -> None:
@@ -202,6 +232,11 @@ def main():
     
     if not args.command:
         parser.print_help()
+        sys.exit(1)
+    
+    # Allow device-info command to work without full dependencies
+    if args.command != 'device-info' and not DEPENDENCIES_AVAILABLE:
+        logger.error("Required dependencies not available. Please install requirements: pip install -r requirements.txt")
         sys.exit(1)
     
     logger.info(f"Executing command: {args.command}")

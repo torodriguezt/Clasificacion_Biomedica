@@ -1,0 +1,23 @@
+# Node.js
+node_modules
+frontend/node_modules
+npm-debug.log
+pnpm-debug.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos
+*.env
+.venv
+.env.local
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Otros
+.git

@@ -31,7 +31,7 @@ export default function MedicalClassifier() {
 
     try {
       // Call the FastAPI backend
-      const response = await fetch('http://localhost:8000/classify', {
+      const response = await fetch('http://159.65.106.247:8000/classify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -131,16 +131,27 @@ export default function MedicalClassifier() {
                 Clasificación automática de literatura médica en 4 dominios especializados
               </p>
             </div>
-            {/* Navigation Link */}
-            <Link href="/rendimiento">
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 hover:bg-primary/10 transition-colors bg-transparent"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Rendimiento del Modelo
-              </Button>
-            </Link>
+            {/* Navigation Links */}
+            <div className="flex gap-2">
+              <Link href="/upload">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 hover:bg-primary/10 transition-colors bg-transparent"
+                >
+                  <FileText className="h-4 w-4" />
+                  Cargar CSV
+                </Button>
+              </Link>
+              <Link href="/rendimiento">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 hover:bg-primary/10 transition-colors bg-transparent"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Rendimiento del Modelo
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>

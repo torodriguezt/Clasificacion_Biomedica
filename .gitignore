@@ -110,12 +110,6 @@ coverage/
 .env.production.local
 
 # ============================
-# Data
-# ============================
-*.csv
-!challenge_data-18-ago.csv   # dejar solo dataset de ejemplo
-
-# ============================
 # Training results
 # ============================
 results_fold_*/
